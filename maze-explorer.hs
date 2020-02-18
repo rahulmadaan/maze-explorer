@@ -2,6 +2,11 @@ data Coord = Coord (Int, Int) deriving (Show, Eq)
 type ExitPoint = Coord
 type EntryPoint = Coord
 data Direction = North | East | South | West deriving (Eq, Enum)
+data Message = Possible | Impossible deriving (Eq, Enum)
+
+instance Show Message where 
+  show Possible = "possible/true/yay"
+  show Impossible = "impossible/not true/darn it"
 
 data Maze = Maze { path :: [Coord],
                    entryPoint :: (Direction, Coord),
@@ -62,30 +67,32 @@ parseMaze maze = do
   let exitPoint = getExitPoint mapping
   Maze (path ++ [exitPoint]) entryPoint exitPoint
 
-walk :: [Coord] -> Coord -> Direction -> Coord -> Coord
-walk path exitPoint currentDirection currentPosition = do
+walk :: [Coord] -> Coord -> Direction -> Coord -> Int -> Message
+walk path exitPoint currentDirection currentPosition infiniteCount = do
   let nextPosition = move currentDirection currentPosition
   let turnRight = move (right currentDirection) currentPosition
   let turnLeft = move (left currentDirection) currentPosition
   let turnBack = move (turn180 currentDirection) currentPosition
-
-  if currentPosition == exitPoint
-    then do
-      currentPosition
-    else do
-      if not (nextPosition `elem` path)
+  if infiniteCount > 2 
+    then Impossible
+    else 
+      if currentPosition == exitPoint
         then do
-          if not (turnRight `elem` path)
-            then 
-              if not (turnLeft `elem` path)
-                then walk path exitPoint (turn180 currentDirection) turnBack 
+          Possible
+        else do
+          if not (nextPosition `elem` path)
+            then do
+              if not (turnRight `elem` path)
+                then 
+                  if not (turnLeft `elem` path)
+                    then walk path exitPoint (turn180 currentDirection) turnBack (succ infiniteCount)
+                    else
+                      walk path exitPoint (left currentDirection) turnLeft infiniteCount
                 else
-                  walk path exitPoint (left currentDirection) turnLeft    
-            else
-              walk path exitPoint (right currentDirection) turnRight
-        else walk path exitPoint currentDirection nextPosition
-            
-explore :: Maze -> Coord
+                  walk path exitPoint (right currentDirection) turnRight infiniteCount
+            else walk path exitPoint currentDirection nextPosition infiniteCount
+                
+explore :: Maze -> Message
 explore (Maze { path = p, entryPoint = entry, exitPoint = exit}) = do
   let currentDirection = (fst entry)
-  walk p exit currentDirection (snd entry)
+  walk p exit currentDirection (snd entry) 0

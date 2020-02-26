@@ -99,26 +99,32 @@ actionToTake _ True _ _ = GoRight
 actionToTake _ _ True _ = GoLeft
 actionToTake _ _ _ True = AboutTurn
 
-
-walk :: [Coord] -> Coord -> Direction -> Coord -> Int -> Message
-walk _ _ _ _ 3 = Impossible
-walk path exitPoint currentDirection currentPosition infiniteCount = 
+walk :: [Coord] -> Coord -> Direction -> Coord -> Int -> Int -> Message
+walk _ _ _ _ 3 _ = Impossible
+walk p e cd cp ic 6 = walk p e (turn180 cd) cp (succ ic) 0
+walk path exitPoint currentDirection currentPosition infiniteCount stepCount = do
   if currentPosition == exitPoint 
     then 
       Possible
       else
-        case action of Forward   -> walkToNext currentDirection forward infiniteCount
-                       GoRight   -> walkToNext (moveRight currentDirection) right infiniteCount
-                       GoLeft    -> walkToNext (moveLeft currentDirection) left infiniteCount
-                       AboutTurn -> walkToNext (turn180 currentDirection) backward (succ infiniteCount)
+        case action of Forward   -> walkToNext currentDirection forward infiniteCount (succ stepCount)
+                       GoRight   -> walkToNext (moveRight currentDirection) right infiniteCount (succ stepCount)
+                       GoLeft    -> walkToNext (moveLeft currentDirection) left infiniteCount (succ stepCount)
+                       AboutTurn -> walkToNext (turn180 currentDirection) backward (succ infiniteCount) (succ stepCount)
         where inPath = (`elem` path)
               nextPosition = map (move currentPosition) (turn currentDirection)
               [canMoveRight, canMoveLeft, canMoveBackward, canMoveForward] = map inPath nextPosition
               [right, left, backward, forward] = nextPosition
-              action = actionToTake canMoveForward canMoveRight canMoveLeft canMoveBackward
+              action = (actionToTake canMoveForward canMoveRight canMoveLeft canMoveBackward)
               walkToNext = walk path exitPoint
                         
 explore :: Maze -> Message
 explore (Maze { path = p, entryPoint = entry, exitPoint = exit}) = do
   let currentDirection = (fst entry)
-  walk p exit currentDirection (snd entry) 0
+  walk p exit currentDirection (snd entry) 0 0
+
+main :: IO() 
+main = do
+  putStrLn "Enter maze" 
+  maze <- getLine
+  (putStrLn $ show (map id maze))
